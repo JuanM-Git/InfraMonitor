@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOC·LOG — Telecom &amp; Data Center Room Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F1720;
+    --panel:#17212C;
+    --panel-2:#1D2836;
+    --panel-3:#212D3C;
+    --line:#2A3644;
+    --line-soft:#212B38;
+    --text:#EAF0F6;
+    --muted:#8697AA;
+    --faint:#56667A;
+    --ok:#35D28A;
+    --ok-dim:rgba(53,210,138,.14);
+    --warn:#F5A93E;
+    --warn-dim:rgba(245,169,62,.14);
+    --crit:#FF5D6C;
+    --crit-dim:rgba(255,93,108,.14);
+    --closed:#8697AA;
+    --closed-dim:rgba(134,151,170,.14);
+    --accent:#45C4E0;
+    --accent-dim:rgba(69,196,224,.14);
+    --radius:14px;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --sans:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+  }
+
+  .app{max-width:1080px;margin:0 auto;padding:20px 20px 80px;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px;
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .brand{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:.5px;
+    color:var(--text);
+  }
+  .clock{
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--accent);
+    background:var(--ink);
+    border:1px solid var(--line);
+    padding:8px 14px;
+    border-radius:9px;
+    letter-spacing:.3px;
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:8px;margin-bottom:18px;}
+  .tab{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--muted);
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:10px 18px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab:hover{color:var(--text);border-color:var(--faint);}
+  .tab.active{
+    color:var(--ink);
+    background:var(--accent);
+    border-color:var(--accent);
+  }
+  .tab:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+
+  /* ---------- Home ---------- */
+  .local-banner{
+    background:var(--warn-dim);
+    border:1px solid var(--warn);
+    color:var(--warn);
+    font-size:13px;
+    font-weight:600;
+    padding:10px 16px;
+    border-radius:10px;
+    margin-bottom:16px;
+  }
+
+  .backnav{
+    display:flex;align-items:center;gap:6px;
+    background:none;border:none;cursor:pointer;
+    color:var(--muted);font-family:var(--sans);font-weight:600;font-size:13px;
+    padding:0;margin-bottom:16px;
+  }
+  .backnav:hover{color:var(--text);}
+
+
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- Form card ---------- */
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+  }
+  .card h2{
+    margin:0 0 4px;
+    font-size:17px;
+    font-weight:700;
+  }
+  .card .subtext{margin:0 0 20px;color:var(--muted);font-size:13px;}
+
+  .stamp-row{
+    display:flex;align-items:center;gap:14px;
+    background:var(--panel-2);
+    border:1px dashed var(--line);
+    border-radius:10px;
+    padding:12px 16px;
+    margin-bottom:22px;
+  }
+  .stamp-row .stamp-label{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;}
+  .stamp-row .stamp-value{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--accent);}
+  .stamp-row .ticket-no{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--faint);}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+  .field.full{grid-column:1/-1;}
+  label{font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.2px;}
+  label .req{color:var(--crit);}
+
+  select, textarea, input[type=text]{
+    font-family:var(--sans);
+    font-size:14px;
+    color:var(--text);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:11px 12px;
+    width:100%;
+    transition:border-color .15s;
+  }
+  select:hover, textarea:hover, input:hover{border-color:var(--faint);}
+  select:focus, textarea:focus, input:focus{border-color:var(--accent);outline:none;}
+  textarea{resize:vertical;min-height:80px;line-height:1.5;}
+  select{appearance:none; background-image:linear-gradient(45deg, transparent 50%, var(--faint) 50%), linear-gradient(135deg, var(--faint) 50%, transparent 50%); background-position:calc(100% - 18px) calc(50% - 3px), calc(100% - 13px) calc(50% - 3px); background-size:5px 5px, 5px 5px; background-repeat:no-repeat;}
+
+  .service-checks{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:8px;
+  }
+  .service-check{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--panel-2);
+    border:1.5px solid var(--line);
+    border-radius:9px;
+    padding:10px 12px;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .service-check:hover{border-color:var(--faint);}
+  .service-check input[type=checkbox]{
+    appearance:none;
+    width:18px;height:18px;
+    min-width:18px;
+    border-radius:5px;
+    border:1.5px solid var(--faint);
+    background:var(--panel);
+    cursor:pointer;
+    position:relative;
+    transition:border-color .15s, background .15s;
+  }
+  .service-check input[type=checkbox]:checked{
+    background:var(--accent);
+    border-color:var(--accent);
+  }
+  .service-check input[type=checkbox]:checked::after{
+    content:"";
+    position:absolute;
+    left:5px;top:1px;
+    width:5px;height:10px;
+    border:solid var(--ink);
+    border-width:0 2px 2px 0;
+    transform:rotate(45deg);
+  }
+  .service-check.checked{border-color:var(--accent);background:var(--accent-dim);}
+  .service-check span{font-size:13.5px;font-weight:600;color:var(--text);}
+
+  .status-choices{display:flex;flex-wrap:wrap;gap:8px;}
+  .status-chip{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:13px;
+    padding:9px 14px;
+    border-radius:8px;
+    border:1.5px solid var(--line);
+    background:var(--panel-2);
+    color:var(--muted);
+    cursor:pointer;
+    transition:all .15s;
+  }
+  .status-chip[data-v="Normal"].selected{background:var(--ok-dim);border-color:var(--ok);color:var(--ok);}
+  .status-chip[data-v="Follow-up"].selected{background:var(--warn-dim);border-color:var(--warn);color:var(--warn);}
+  .status-chip[data-v="Critical"].selected{background:var(--crit-dim);border-color:var(--crit);color:var(--crit);}
+  .status-chip[data-v="Closed"].selected{background:var(--closed-dim);border-color:var(--closed);color:var(--closed);}
+
+  .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .btn{
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:14px;
+    padding:12px 22px;
+    border-radius:9px;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:filter .15s, transform .05s;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent);color:var(--ink);}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--line);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--faint);}
+
+  /* ---------- Page header ---------- */
+  .page-header{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+    margin-bottom:18px;flex-wrap:wrap;
+  }
+  .page-title{margin:0 0 4px;font-size:20px;font-weight:700;}
+  .page-sub{margin:0;color:var(--muted);font-size:13.5px;}
+  .page-header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+  /* ---------- History ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  .stat{
+    all:unset;
+    box-sizing:border-box;
+    display:block;
+    background:var(--panel);border:1.5px solid var(--line);border-radius:12px;
+    padding:14px 16px;
+    cursor:pointer;
+    transition:border-color .15s, background .15s, transform .1s;
+  }
+  .stat:hover{border-color:var(--faint);transform:translateY(-1px);}
+  .stat:active{transform:translateY(0);}
+  .stat .n{font-family:var(--mono);font-size:24px;font-weight:700;}
+  .stat .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;}
+  .stat.ok .n{color:var(--ok);}
+  .stat.warn .n{color:var(--warn);}
+  .stat.crit .n{color:var(--crit);}
+  .stat.closed .n{color:var(--closed);}
+  .stat.ok.selected{border-color:var(--ok);background:var(--ok-dim);}
+  .stat.warn.selected{border-color:var(--warn);background:var(--warn-dim);}
+  .stat.crit.selected{border-color:var(--crit);background:var(--crit-dim);}
+  .stat.closed.selected{border-color:var(--closed);background:var(--closed-dim);}
+
+  .filters{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-bottom:18px;
+    display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:10px;
+  }
+  .filters .field{margin-bottom:0;}
+  .filters label{font-size:11px;}
+
+  .tickets-list{display:flex;flex-direction:column;gap:14px;}
+
+  .ticket{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px 18px 26px;
+    overflow:hidden;
+  }
+  .ticket::before{
+    content:"";
+    position:absolute;top:0;left:0;bottom:0;width:10px;
+    background-image:radial-gradient(circle at 5px 8px, var(--ink) 3px, transparent 3.5px);
+    background-size:10px 16px;
+    background-repeat:repeat-y;
+    background-color:var(--line);
+  }
+  .ticket-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .ticket-meta{display:flex;flex-direction:column;gap:3px;}
+  .ticket-id{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.5px;}
+  .ticket-loc{font-weight:700;font-size:15px;}
+  .ticket-loc .sep{color:var(--faint);font-weight:400;margin:0 6px;}
+  .ticket-service{font-size:12.5px;color:var(--accent);font-weight:600;margin-top:2px;}
+  .ticket-date{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:right;white-space:nowrap;}
+
+  .badge{
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:11.5px;
+    letter-spacing:.3px;
+    padding:6px 12px;
+    border-radius:20px;
+    border:1.5px solid;
+    text-transform:uppercase;
+  }
+  .badge.Normal{color:var(--ok);border-color:var(--ok);background:var(--ok-dim);}
+  .badge.Followup{color:var(--warn);border-color:var(--warn);background:var(--warn-dim);}
+  .badge.Critical{color:var(--crit);border-color:var(--crit);background:var(--crit-dim);}
+  .badge.Closed{color:var(--closed);border-color:var(--closed);background:var(--closed-dim);transform:rotate(-2deg);}
+
+  .ticket-body{margin-top:14px;font-size:13.5px;color:var(--text);line-height:1.5;}
+  .ticket-body .label{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+  .ticket-final{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+
+  .ticket-toggle{
+    margin-top:14px;
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:12.5px;
+    color:var(--accent);
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:0;
+  }
+  .ticket-toggle:hover{text-decoration:underline;}
+
+  .ticket-edit{
+    display:none;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--line-soft);
+    gap:12px;
+  }
+  .ticket-edit.open{display:flex;flex-direction:column;}
+  .ticket-edit .row{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+    background:var(--panel);
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+  }
+  .empty .big{font-size:34px;margin-bottom:10px;}
+  .empty h3{margin:0 0 6px;color:var(--text);font-size:16px;}
+  .empty p{margin:0;font-size:13.5px;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-3);border:1px solid var(--ok);color:var(--text);
+    padding:12px 20px;border-radius:10px;font-size:13.5px;font-weight:600;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:100;
+    display:flex;align-items:center;gap:8px;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);}
+
+  .loading-line{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
+
+  @media (max-width: 720px){
+    .grid{grid-template-columns:1fr;}
+    .filters{grid-template-columns:1fr 1fr;}
+    .stats{grid-template-columns:1fr 1fr;}
+    .topbar{align-items:flex-start;}
+    .page-header{flex-direction:column;align-items:stretch;}
+    .page-header .btn{width:100%;}
+    .page-header-actions{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">DCSS Daily Room Monitoring</div>
+    <div class="clock">
+      <span id="dateToday">--</span>
+    </div>
+  </header>
+
+  <div class="local-banner" id="localBanner" style="display:none;">
+    ⚠️ This file is being used outside of Claude, so records are saved only in this browser and are not shared with the rest of the team.
+  </div>
+
+  <main>
+    <!-- ===================== NEW RECORD ===================== -->
+    <section id="view-new" class="view">
+      <button type="button" class="backnav" data-back>← Back to lookup</button>
+      <div class="card">
+        <h2>Log a review</h2>
+        <p class="subtext">Select the country and room, and check every service you reviewed there — one record will be saved per room. The date and time were already stamped when you pressed "New record".</p>
+
+        <div class="stamp-row">
+          <div>
+            <div class="stamp-label">Record date and time</div>
+            <div class="stamp-value" id="datePreview">--</div>
+          </div>
+          <div class="ticket-no" id="ticketPreview">Ticket NOC-000000</div>
+        </div>
+
+        <form id="recordForm">
+          <div class="grid">
+            <div class="field">
+              <label for="selCountry">Country <span class="req">*</span></label>
+              <select id="selCountry" required></select>
+            </div>
+            <div class="field">
+              <label for="selRoom">Room <span class="req">*</span></label>
+              <select id="selRoom" required></select>
+            </div>
+            <div class="field full">
+              <label>Services reviewed <span class="req">*</span></label>
+              <div class="service-checks" id="serviceChecks"></div>
+            </div>
+
+            <div class="field full">
+              <label>Status <span class="req">*</span></label>
+              <div class="status-choices" id="statusChoices">
+                <button type="button" class="status-chip" data-v="Normal">Normal</button>
+                <button type="button" class="status-chip" data-v="Follow-up">Follow-up</button>
+                <button type="button" class="status-chip" data-v="Critical">Critical</button>
+                <button type="button" class="status-chip" data-v="Closed">Closed</button>
+              </div>
+            </div>
+
+            <div class="field full">
+              <label for="txtComments">Comments</label>
+              <textarea id="txtComments" placeholder="Describe what was found during the review (temperature, alarms, UPS status, etc.)"></textarea>
+            </div>
+
+            <div class="field full" id="wrapFinalComment" style="display:none;">
+              <label for="txtFinalComment">Final comment (event closure)</label>
+              <textarea id="txtFinalComment" placeholder="Explain how the event was resolved or closed"></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" id="btnClear">Clear</button>
+            <button type="submit" class="btn btn-primary">Save record</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== LOOKUP / MAIN PAGE ===================== -->
+    <section id="view-history" class="view active">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Records lookup</h2>
+          <p class="page-sub">Review history by room. Tap a status to filter.</p>
+        </div>
+        <div class="page-header-actions">
+          <button type="button" class="btn btn-ghost" id="btnExport">⬇ Export &amp; clear history</button>
+          <button type="button" class="btn btn-primary" id="btnNewRecord">+ New record</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats">
+        <button type="button" class="stat ok" data-status="Normal"><div class="n" id="statNormal">0</div><div class="l">Normal</div></button>
+        <button type="button" class="stat warn" data-status="Follow-up"><div class="n" id="statFollowup">0</div><div class="l">Follow-up</div></button>
+        <button type="button" class="stat crit" data-status="Critical"><div class="n" id="statCritical">0</div><div class="l">Critical</div></button>
+        <button type="button" class="stat closed" data-status="Closed"><div class="n" id="statClosed">0</div><div class="l">Closed</div></button>
+      </div>
+
+      <div class="filters">
+        <div class="field">
+          <label for="fSearch">Search</label>
+          <input type="text" id="fSearch" placeholder="Comment, room, service…">
+        </div>
+        <div class="field">
+          <label for="fCountry">Country</label>
+          <select id="fCountry"><option value="">All</option></select>
+        </div>
+        <div class="field">
+          <label for="fRoom">Room</label>
+          <select id="fRoom"><option value="">All</option></select>
+        </div>
+        <div class="field">
+          <label for="fService">Service</label>
+          <select id="fService"><option value="">All</option></select>
+        </div>
+      </div>
+
+      <div id="recordsList" class="tickets-list">
+        <div class="loading-line">Loading records…</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Record saved</span></div>
+</div>
+
+<script>
+/* ---------------- Master data (from ListaCuartosEquipo.csv / ListaEventos.csv) ---------------- */
+const ROOMS = {
+  "Brazil": ["DC1","DC2","Telecom1","ENG","MFG","MKT","Seguridad"],
+  "Colombia": ["DC"],
+  "Argentina": ["DC"],
+  "Mexico": ["DC1","IDF PA","IDF IT","IDF PB","IDF Central"]
+};
+const SERVICES = ["Fire Alarm","UPS","Servers","Switches","Links","Temperature","General"];
+const STATUS_LIST = ["Normal","Follow-up","Critical","Closed"];
+
+const STORAGE_KEY = "records";
+let records = [];
+let currentStatus = null;
+
+/* ---------------- Utilities ---------------- */
+function pad(n){ return n.toString().padStart(2,'0'); }
+function formatDate(d){
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${pad(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function formatShortDate(iso){
+  const d = new Date(iso);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${pad(d.getDate())}/${months[d.getMonth()]}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function statusSlug(v){
+  if(v === "Critical") return "Critical";
+  if(v === "Follow-up") return "Followup";
+  return v; // Normal, Closed
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+/* ---------------- Today's date (header) ---------------- */
+function formatDateOnly(d){
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  return `${days[d.getDay()]}, ${pad(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+document.getElementById('dateToday').textContent = formatDateOnly(new Date());
+
+/* ---------------- Record date: frozen when pressing "New record" ---------------- */
+let currentRecordDate = null;
+function startNewRecord(){
+  currentRecordDate = new Date();
+  document.getElementById('datePreview').textContent = formatDate(currentRecordDate);
+  updateTicketPreview();
+  goToView('new');
+}
+
+/* ---------------- Populate master selects ---------------- */
+function populateCountryRoom(selCountryEl, selRoomEl, includeAll){
+  selCountryEl.innerHTML = (includeAll? '<option value="">All</option>':'') +
+    Object.keys(ROOMS).map(p=>`<option value="${p}">${p}</option>`).join('');
+  function refreshRooms(){
+    const country = selCountryEl.value;
+    const rooms = country ? ROOMS[country] : Object.values(ROOMS).flat();
+    const uniqueRooms = includeAll ? [...new Set(rooms)] : rooms;
+    selRoomEl.innerHTML = (includeAll? '<option value="">All</option>':'') +
+      uniqueRooms.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+  selCountryEl.addEventListener('change', refreshRooms);
+  refreshRooms();
+}
+
+populateCountryRoom(document.getElementById('selCountry'), document.getElementById('selRoom'), false);
+populateCountryRoom(document.getElementById('fCountry'), document.getElementById('fRoom'), true);
+
+document.getElementById('serviceChecks').innerHTML = SERVICES.map((s,i)=>`
+  <label class="service-check" for="chkService${i}">
+    <input type="checkbox" id="chkService${i}" value="${s}">
+    <span>${s}</span>
+  </label>`).join('');
+document.querySelectorAll('#serviceChecks input[type=checkbox]').forEach(chk=>{
+  chk.addEventListener('change', ()=>{
+    chk.closest('.service-check').classList.toggle('checked', chk.checked);
+  });
+});
+function selectedServices(){
+  return Array.from(document.querySelectorAll('#serviceChecks input:checked')).map(c=>c.value);
+}
+document.getElementById('fService').innerHTML += SERVICES.map(s=>`<option value="${s}">${s}</option>`).join('');
+
+/* ---------------- Status chips (new record form) ---------------- */
+document.querySelectorAll('.status-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('.status-chip').forEach(c=>c.classList.remove('selected'));
+    chip.classList.add('selected');
+    currentStatus = chip.dataset.v;
+    document.getElementById('wrapFinalComment').style.display = (currentStatus === 'Closed') ? 'block' : 'none';
+  });
+});
+
+/* ---------------- Navigation between views ---------------- */
+function goToView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if(name === 'history'){ renderHistory(); }
+}
+
+document.getElementById('btnNewRecord').addEventListener('click', startNewRecord);
+document.querySelectorAll('[data-back]').forEach(btn=>{
+  btn.addEventListener('click', ()=> goToView('history'));
+});
+
+/* ---------------- Persistence ---------------- */
+const usingClaudeStorage = typeof window.storage !== 'undefined'
+  && typeof window.storage.get === 'function'
+  && typeof window.storage.set === 'function';
+
+const Store = usingClaudeStorage ? window.storage : {
+  async get(key, shared){
+    const raw = localStorage.getItem('noclog_' + key);
+    if(raw === null) return null;
+    return { key, value: raw, shared };
+  },
+  async set(key, value, shared){
+    localStorage.setItem('noclog_' + key, value);
+    return { key, value, shared };
+  }
+};
+
+if(!usingClaudeStorage){
+  console.warn('window.storage is not available: falling back to the browser localStorage. Records will not be shared with the team, only saved in this browser.');
+  const banner = document.getElementById('localBanner');
+  if(banner) banner.style.display = 'block';
+}
+
+const SCHEMA_VERSION = "3-en";
+const VERSION_KEY = "records_version";
+
+async function loadRecords(){
+  let currentVersion = null;
+  try{
+    const vRes = await Store.get(VERSION_KEY, true);
+    currentVersion = vRes ? vRes.value : null;
+  }catch(e){
+    currentVersion = null;
+  }
+
+  if(currentVersion !== SCHEMA_VERSION){
+    // One-time cleanup: the app was switched to English, so any previous
+    // (Spanish-labelled) records are cleared to avoid mixed-language data.
+    records = [];
+    try{
+      await Store.set(STORAGE_KEY, JSON.stringify([]), true);
+      await Store.set(VERSION_KEY, SCHEMA_VERSION, true);
+    }catch(e){ /* if it fails, it will be retried on the next load */ }
+    return;
+  }
+
+  try{
+    const r = await Store.get(STORAGE_KEY, true);
+    records = r && r.value ? JSON.parse(r.value) : [];
+    // Compatibility with records saved before grouping by room (one service per record)
+    records = records.map(rec=>{
+      if(!rec.services){
+        return { ...rec, services: [] };
+      }
+      return rec;
+    });
+  }catch(e){
+    records = [];
+  }
+}
+async function saveRecords(){
+  try{
+    const result = await Store.set(STORAGE_KEY, JSON.stringify(records), true);
+    if(!result){ showToast('Could not save the record. Please try again.'); }
+    return !!result;
+  }catch(e){
+    showToast('Error saving the record: ' + (e && e.message ? e.message : 'unknown'));
+    return false;
+  }
+}
+
+/* ---------------- Ticket number ---------------- */
+function nextTicketNumber(){
+  const n = records.length + 1;
+  return 'NOC-' + n.toString().padStart(6,'0');
+}
+function updateTicketPreview(){
+  document.getElementById('ticketPreview').textContent = 'Ticket ' + nextTicketNumber();
+}
+
+/* ---------------- Save new record ---------------- */
+document.getElementById('recordForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!currentStatus){
+    showToast('Select a status before saving.');
+    return;
+  }
+  const services = selectedServices();
+  if(services.length === 0){
+    showToast('Check at least one reviewed service.');
+    return;
+  }
+  const baseDate = (currentRecordDate || new Date()).toISOString();
+  const country = document.getElementById('selCountry').value;
+  const room = document.getElementById('selRoom').value;
+  const comments = document.getElementById('txtComments').value.trim();
+  const finalComment = document.getElementById('txtFinalComment').value.trim();
+
+  const newEntry = {
+    id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    ticket: nextTicketNumber(),
+    date: baseDate,
+    country, room,
+    services,
+    comments, status: currentStatus, finalComment,
+    updatedAt: null
+  };
+
+  records.push(newEntry);
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const ok = await saveRecords();
+  btn.disabled = false; btn.textContent = 'Save record';
+  if(ok){
+    showToast(`Record ${newEntry.ticket} saved (${services.length} service(s))`);
+    clearForm();
+    goToView('history');
+  }else{
+    records.pop();
+  }
+});
+
+function clearForm(){
+  document.querySelectorAll('#serviceChecks input[type=checkbox]').forEach(chk=>{
+    chk.checked = false;
+    chk.closest('.service-check').classList.remove('checked');
+  });
+  document.getElementById('txtComments').value = '';
+  document.getElementById('txtFinalComment').value = '';
+  document.getElementById('wrapFinalComment').style.display = 'none';
+  document.querySelectorAll('.status-chip').forEach(c=>c.classList.remove('selected'));
+  currentStatus = null;
+  currentRecordDate = null;
+  document.getElementById('datePreview').textContent = '--';
+}
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  clearForm();
+  goToView('history');
+});
+
+/* ---------------- History: render ---------------- */
+function passesFilters(r){
+  const text = document.getElementById('fSearch').value.trim().toLowerCase();
+  const country = document.getElementById('fCountry').value;
+  const room = document.getElementById('fRoom').value;
+  const service = document.getElementById('fService').value;
+  const status = activeStatusFilter;
+
+  if(country && r.country !== country) return false;
+  if(room && r.room !== room) return false;
+  if(service && !(r.services || []).includes(service)) return false;
+  if(status && r.status !== status) return false;
+  if(text){
+    const blob = `${r.country} ${r.room} ${(r.services||[]).join(' ')} ${r.comments} ${r.finalComment} ${r.ticket}`.toLowerCase();
+    if(!blob.includes(text)) return false;
+  }
+  return true;
+}
+
+let activeStatusFilter = '';
+document.querySelectorAll('#stats .stat').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const v = btn.dataset.status;
+    activeStatusFilter = (activeStatusFilter === v) ? '' : v;
+    renderHistory();
+  });
+});
+
+function renderStats(list){
+  document.getElementById('statNormal').textContent = list.filter(r=>r.status==='Normal').length;
+  document.getElementById('statFollowup').textContent = list.filter(r=>r.status==='Follow-up').length;
+  document.getElementById('statCritical').textContent = list.filter(r=>r.status==='Critical').length;
+  document.getElementById('statClosed').textContent = list.filter(r=>r.status==='Closed').length;
+  document.querySelectorAll('#stats .stat').forEach(btn=>{
+    btn.classList.toggle('selected', btn.dataset.status === activeStatusFilter);
+  });
+}
+
+function renderHistory(){
+  const cont = document.getElementById('recordsList');
+  const sorted = [...records].sort((a,b)=> new Date(b.date) - new Date(a.date));
+  const filtered = sorted.filter(passesFilters);
+  renderStats(sorted);
+
+  if(filtered.length === 0){
+    cont.innerHTML = `<div class="empty">
+      <div class="big">🗂️</div>
+      <h3>${records.length === 0 ? 'No records yet' : 'No results with these filters'}</h3>
+      <p>${records.length === 0 ? 'Once you save your first review, it will show up here for follow-up.' : 'Adjust the search or filters to see more records.'}</p>
+    </div>`;
+    return;
+  }
+
+  cont.innerHTML = filtered.map(r=>{
+    const slug = statusSlug(r.status);
+    return `
+    <div class="ticket" data-id="${r.id}">
+      <div class="ticket-top">
+        <div class="ticket-meta">
+          <div class="ticket-id">${r.ticket}</div>
+          <div class="ticket-loc">${r.country}<span class="sep">/</span>${r.room}</div>
+          <div class="ticket-service">${(r.services||[]).join(' · ')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+          <span class="badge ${slug}">${r.status}</span>
+          <span class="ticket-date">${formatShortDate(r.date)}</span>
+        </div>
+      </div>
+      ${r.comments ? `<div class="ticket-body"><div class="label">Comments</div>${escapeHtml(r.comments)}</div>` : ''}
+      ${r.finalComment ? `<div class="ticket-body ticket-final"><div class="label">Final comment</div>${escapeHtml(r.finalComment)}</div>` : ''}
+      <button class="ticket-toggle" data-action="toggle">Update / follow up ▾</button>
+      <div class="ticket-edit" id="edit-${r.id}">
+        <div class="field">
+          <label>New status</label>
+          <select class="edit-status">
+            ${STATUS_LIST.map(s=>`<option value="${s}" ${s===r.status?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Final comment</label>
+          <textarea class="edit-final-comment" placeholder="Explain how it was resolved or the follow-up progress">${r.finalComment||''}</textarea>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" data-action="save">Save changes</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML.replace(/\n/g,'<br>');
+}
+
+/* ---------------- History: interactions (delegation) ---------------- */
+document.getElementById('recordsList').addEventListener('click', async (e)=>{
+  const ticket = e.target.closest('.ticket');
+  if(!ticket) return;
+  const id = ticket.dataset.id;
+
+  if(e.target.dataset.action === 'toggle'){
+    const editBox = document.getElementById('edit-'+id);
+    editBox.classList.toggle('open');
+    e.target.textContent = editBox.classList.contains('open') ? 'Hide ▴' : 'Update / follow up ▾';
+  }
+
+  if(e.target.dataset.action === 'save'){
+    const editBox = document.getElementById('edit-'+id);
+    const newStatus = editBox.querySelector('.edit-status').value;
+    const newFinalComment = editBox.querySelector('.edit-final-comment').value.trim();
+    const idx = records.findIndex(r=>r.id === id);
+    if(idx > -1){
+      records[idx].status = newStatus;
+      records[idx].finalComment = newFinalComment;
+      records[idx].updatedAt = new Date().toISOString();
+      const btn = e.target;
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const ok = await saveRecords();
+      btn.disabled = false; btn.textContent = 'Save changes';
+      if(ok){
+        showToast('Record ' + records[idx].ticket + ' updated');
+        renderHistory();
+      }
+    }
+  }
+});
+
+/* ---------------- Filters: listeners ---------------- */
+['fSearch','fCountry','fRoom','fService'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', renderHistory);
+  document.getElementById(id).addEventListener('change', renderHistory);
+});
+
+/* ---------------- Export & clear history ---------------- */
+function csvEscape(val){
+  const s = String(val ?? '');
+  if(/[",\n]/.test(s)){
+    return '"' + s.replace(/"/g,'""') + '"';
+  }
+  return s;
+}
+function buildHistoryCsv(list){
+  const headers = ['Ticket','Date','Country','Room','Services','Comments','Status','FinalComment','UpdatedAt'];
+  const rows = list.map(r => [
+    r.ticket, r.date, r.country, r.room, (r.services||[]).join('; '),
+    r.comments || '', r.status, r.finalComment || '', r.updatedAt || ''
+  ]);
+  return [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\n');
+}
+function downloadHistoryCsv(list){
+  const csvContent = buildHistoryCsv(list);
+  const blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  a.href = url;
+  a.download = `noc-log-history-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+document.getElementById('btnExport').addEventListener('click', async ()=>{
+  if(records.length === 0){
+    showToast('There are no records to export.');
+    return;
+  }
+  const confirmClear = confirm(
+    `This will download ${records.length} record(s) as a CSV file and then clear the history from this app. Continue?`
+  );
+  if(!confirmClear) return;
+
+  downloadHistoryCsv(records);
+
+  const backup = records;
+  records = [];
+  const btn = document.getElementById('btnExport');
+  btn.disabled = true; btn.textContent = 'Clearing…';
+  const ok = await saveRecords();
+  btn.disabled = false; btn.textContent = '⬇ Export & clear history';
+  if(ok){
+    showToast('History exported and cleared.');
+    renderHistory();
+  }else{
+    records = backup;
+    showToast('Export downloaded, but clearing failed. Please try again.');
+  }
+});
+
+/* ---------------- Init ---------------- */
+(async function init(){
+  await loadRecords();
+  renderHistory();
+})();
+</script>
+</body>
+</html>
