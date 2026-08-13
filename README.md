@@ -1,2 +1,2 @@
 # InfraMonitor
-Test for a html single page
+This application is intended solely for testing purposes. It is used to validate and experiment with Azure services, GitHub integration, and development workflows using Visual Studio Code. All information, configurations, data, and content included in this application are non-production materials and are provided exclusively for testing, learning, and evaluation purposes. This application must not be used to store, process, or manage any production, confidential, regulated, or business-critical information.
